@@ -27,31 +27,50 @@ console.log(
 const app = express();
 app.use([bodyParser.json(), cors()]);
 
-app.get("/chatCompletion", async function (req, res) {
+app.get("/", async function (req, res) {
   try {
     const client = new OpenAIClient(
       endpoint,
       new AzureKeyCredential(azureApiKey)
     );
 
-    const messages = [{ role: "user", content: "list top 10 dissertations" }];
-
+    const messages = [{ role: "user", content: "list top 5 dissertations" }];
+    console.log(`Message: ${messages.map((m) => m.content).join("\n")}`);
     const events = await client.streamChatCompletions(deploymentId, messages, {
-      maxTokens: 128,
-      azureExtensionOptions: {
-        extensions: [
-          {
-            type: "azure_search",
-            endpoint: searchEndpoint,
-            indexName: searchIndex,
-            authentication: {
-              type: "api_key",
-              key: searchKey,
-            },
+      "temperature": 0,
+      "max_tokens": 1000,
+      "top_p": 1.0,
+      "dataSources": [
+        {
+          "type": "AzureCognitiveSearch",
+          "parameters": {
+            "endpoint": searchEndpoint,
+            "key": searchKey,
+            "indexName": searchIndex,
           },
-        ],
-      },
+        },
+      ],
+      "messages": [
+        {
+          "role": "user",
+          "content": "List top 5 dissertations",
+        },
+      ],
     });
+    // {
+    //   maxTokens: 128,
+    //   azureExtensionOptions: {
+    //     extensions: [
+    //       {
+    //         type: "AzureCognitiveSearch",
+    //         endpoint: searchEndpoint,
+    //         key: searchKey,
+    //         indexName: searchIndex,
+    //         queryType: "Keyword",
+    //       },
+    //     ],
+    //   },
+    // }
     let response = "";
     for await (const event of events) {
       for (const choice of event.choices) {
